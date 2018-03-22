@@ -202,6 +202,50 @@ def getEnvironment():
   return environment.lower()
 
 
+def setProxy():
+  '''
+  Set the proxies for chef client
+
+  :rtype: dict
+  '''
+  http_proxy = readKnobOrTag(name='Httpproxy')
+  https_proxy = readKnobOrTag(name='Httpsproxy')
+  if http_proxy and https_proxy:
+      logger.info('Setting HTTP and HTTPS proxy for chef client')
+      return {'http_proxy': http_proxy, 'https_proxy': https_proxy}
+  elif http_proxy:
+      logger.info('Setting HTTP proxy for chef client')
+      return {'http_proxy': http_proxy}
+  elif http_proxy:
+      logger.info('Setting HTTPS proxy for chef client')
+      return {'https_proxy': https_proxy}
+  else:
+      logger.info('NO proxy found for chef client')
+      return None
+
+
+def setChefClientAttributes(attributes=None):
+  '''
+  Set the run time attributes for chef client
+  '''
+  chef_attribute_file = CHEF_D + '/attributes.json'
+  try:
+      chef_attributes = json.load(open(chef_attribute_file))
+  except IOError:
+      chef_attributes = {}
+
+  if attributes:
+      chef_attributes.update(attributes)
+
+  if chef_attributes:
+      with open(chef_attribute_file, 'w') as attribute_file:
+          json.dump(chef_attributes, attribute_file)
+          logger.info('Chef attributes file %s',  chef_attribute_file)
+      return chef_attribute_file
+  else:
+      return None
+
+
 def getNodePrefix():
   '''
   Determine an instance's node prefix. Will be used in ASGs.
@@ -488,9 +532,13 @@ def runner(connection=None):
   except RuntimeError:
     environment = None
 
+  chef_attribute_file = setChefClientAttributes(setProxy())
+
   chefCommand = ['chef-client', '--run-lock-timeout', '0', '--runlist', runlist]
   if environment:
     chefCommand = chefCommand + ['--environment', environment]
+  if chef_attribute_file:
+    chefCommand = chefCommand + ['--json-attributes', chef_attribute_file]
 
   logger.debug("chefCommand: %s", chefCommand)
   check_call(chefCommand)
