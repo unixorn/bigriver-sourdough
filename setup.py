@@ -25,84 +25,91 @@ import subprocess
 from setuptools import setup, find_packages, Command
 
 def system_call(command):
-  '''
-  Run a command and return stdout.
+    '''
+    Run a command and return stdout.
 
-  Would be better to use subprocess.check_output, but this works on 2.6,
-  which is still the system Python on CentOS 7.
-  '''
-  p = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True)
-  return p.stdout.read()
+    Would be better to use subprocess.check_output, but this works on 2.6,
+    which is still the system Python on CentOS 7.
+    '''
+    procs = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True)
+    return procs.stdout.read()
 
 
-name = 'sourdough'
-version = '1.0.2'
-
+NAME = 'sourdough'
+VERSION = '1.0.2'
 
 class CleanCommand(Command):
-  '''
-  Add a clean option to setup.py's commands
-  '''
-  description = 'Clean up'
-  user_options = []
+    '''
+    Add a clean option to setup.py's commands
+    '''
+    description = 'Clean up'
+    user_options = []
 
 
-  def initialize_options(self):
-    self.cwd = None
+    def initialize_options(self):
+        """
+        Initialize Options
+        """
+        self.cwd = None
 
 
-  def finalize_options(self):
-    self.cwd = os.getcwd()
+    def finalize_options(self):
+        """
+        finalize options
+        """
+        self.cwd = os.getcwd()
 
-
-  def run(self):
-    assert os.getcwd() == self.cwd, "Must be in package root: %s" % self.cwd
-    if os.path.isdir('build'):
-      shutil.rmtree('build')
-    if os.path.isdir('dist'):
-      shutil.rmtree('dist')
+    def run(self):
+        """
+        Run
+        """
+        assert os.getcwd() == self.cwd, "Must be in package root: %s" % self.cwd
+        if os.path.isdir('build'):
+            shutil.rmtree('build')
+        if os.path.isdir('dist'):
+            shutil.rmtree('dist')
 
 
 setup(
-  name=name,
-  author="Joe Block",
-  author_email="jpb@unixorn.net",
-  description="sourdough is a tool to make an instance automatically register with Chef during boot",
-  url="https://github.com/unixorn/sourdough",
-  packages=find_packages(),
-  install_requires=[
-    "boto>=2.38.0",
-    "haze>=0.0.13",
-    "logrus>=0.0.2",
-    "pytoml>=0.1.11",
-    "pyvim>=2.0.24",
-    "pyvmomi>=6.7.1.2018.12",
-    "six>=1.12.0"
-  ],
-  cmdclass={
-    "clean": CleanCommand,
-  },
-  version=version,
-  download_url="https://github.com/unixorn/sourdough/tarball/%s" % version,
-  classifiers=[
-    "Development Status :: 3 - Alpha",
-    "Operating System :: POSIX",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 2.6",
-    "Topic :: System :: Systems Administration",
-  ],
-  keywords=['aws', 'chef', 'cloud', 'configuration-management', 'ec2'],
-  entry_points={
-    "console_scripts": [
-      "sourdough = %s.cli.commands:sourdoughDriver" % name,
-      "sourdough-bootstrap = %s.sourdough:infect" % name,
-      "sourdough-deregister = %s.sourdough:deregisterFromChef" % name,
-      "sourdough-disable-chef = %s.sourdough:disableChefRuns" % name,
-      "sourdough-enable-chef = %s.sourdough:enableChefRuns" % name,
-      "sourdough-disable-debugging = %s.sourdough:disableDebugMode" % name,
-      "sourdough-enable-debugging = %s.sourdough:enableDebugMode" % name,
-      "sourdough-runner = %s.sourdough:runner" % name,
-      "sourdough-starter = %s.sourdough:runner" % name
-    ]
-  }
+    name=NAME,
+    author="Joe Block",
+    author_email="jpb@unixorn.net",
+    description="sourdough is a tool to make an instance automatically register with Chef during boot",
+    url="https://github.com/unixorn/sourdough",
+    packages=find_packages(),
+    install_requires=[
+        "boto>=2.38.0",
+        "haze>=0.0.13",
+        "logrus>=0.0.2",
+        "pytoml>=0.1.11",
+        "pyvim>=2.0.24",
+        "pyvmomi>=6.7.1.2018.12",
+        "six>=1.12.0"
+    ],
+    cmdclass={
+        "clean": CleanCommand,
+    },
+    version=VERSION,
+    download_url="https://github.com/unixorn/sourdough/tarball/%s" % VERSION,
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Operating System :: POSIX",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 2.6",
+        "Topic :: System :: Systems Administration",
+    ],
+    keywords=['aws', 'chef', 'cloud', 'configuration-management', 'ec2'],
+    entry_points={
+        "console_scripts": [
+            "sourdough = %s.cli.commands:sourdoughDriver" % NAME,
+            "sourdough-bootstrap = %s.sourdough:infect" % NAME,
+            "sourdough-deregister = %s.sourdough:deregisterFromChef" % NAME,
+            "sourdough-disable-chef = %s.sourdough:disableChefRuns" % NAME,
+            "sourdough-enable-chef = %s.sourdough:enableChefRuns" % NAME,
+            "sourdough-disable-debugging = %s.sourdough:disableDebugMode" % NAME,
+            "sourdough-enable-debugging = %s.sourdough:enableDebugMode" % NAME,
+            "sourdough-runner = %s.sourdough:runner" % NAME,
+            "sourdough-starter = %s.sourdough:runner" % NAME
+        ]
+    }
 )
