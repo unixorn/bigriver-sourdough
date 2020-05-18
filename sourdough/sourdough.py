@@ -19,7 +19,6 @@ Read configuration parameters from instance EC2 or vSphere tags, then run
 chef-client.
 '''
 
-
 from __future__ import absolute_import
 import datetime
 import json
@@ -31,13 +30,12 @@ import ssl
 import subprocess
 from subprocess import check_call
 import sys
-#import urllib2
 
 import boto.utils
-import haze.ec2
+import haze
 import pytoml as toml
 from pyVim.connect import SmartConnect
-from pyVmomi import vim
+#from pyVmomi import vim
 
 # This is a pointer to the module object instance itself. We'll attach
 # a logger to it later.
@@ -63,18 +61,13 @@ ENABLE_SOURDOUGH_DEBUGGING_F = "/etc/sourdough/debug-sourdough"
 knobsCache = {}
 vmwareTags = {}
 
-
 def amRoot():
     '''
     Are we root?
 
     :rtype: bool
     '''
-    if os.getuid() == 0:
-        return True
-    else:
-        return False
-
+    return bool(os.getuid() == 0)
 
 def systemCall(command):
     '''
@@ -86,7 +79,7 @@ def systemCall(command):
     :param str command: Command to run
     :rtype: str
     '''
-    assert isinstance(command, basestring), ("command must be a string but is %r".format(command))
+    assert isinstance(command, str), ("command must be a string but is %r", command)
 
     p = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True)
     return p.stdout.read()
@@ -99,7 +92,7 @@ def getCustomLogger(name):
     :param str name: What log level to set
     :rtype Logger object
     '''
-    assert isinstance(name, basestring), ("name must be a string but is %r" % name)
+    assert isinstance(name, str), ("name must be a string but is %r" % name)
 
     validLogLevels = ['CRITICAL', 'DEBUG', 'ERROR', 'INFO', 'WARNING']
 
@@ -130,8 +123,8 @@ def readKnob(knobName, knobDirectory='/etc/knobs'):
     :param str name: Which tag/knob to look for
     :rtype: str
     '''
-    assert isinstance(knobDirectory, basestring), ("knobDirectory must be a string but is %r" % knobDirectory)
-    assert isinstance(knobName, basestring), ("knobName must be a string but is %r" % knobName)
+    assert isinstance(knobDirectory, str), ("knobDirectory must be a string but is %r" % knobDirectory)
+    assert isinstance(knobName, str), ("knobName must be a string but is %r" % knobName)
 
     knobpath = "%s/%s" % (knobDirectory, knobName)
     if not os.path.isfile(knobpath):
@@ -153,9 +146,9 @@ def writeKnob(name, value, knobDirectory='/etc/knobs'):
     :param str name: Which knob to write
     :param str value: What value to write to the knobfile
     '''
-    assert isinstance(knobDirectory, basestring), ("knobDirectory must be a string but is %r" % knobDirectory)
-    assert isinstance(name, basestring), ("name must be a string but is %r" % name)
-    assert isinstance(value, basestring), ("value must be a string but is %r" % value)
+    assert isinstance(knobDirectory, str), ("knobDirectory must be a string but is %r" % knobDirectory)
+    assert isinstance(name, str), ("name must be a string but is %r" % name)
+    assert isinstance(value, str), ("value must be a string but is %r" % value)
 
     loadSharedLogger()
     knobPath = "%s/%s" % (knobDirectory, name)
@@ -206,7 +199,7 @@ def readKnobOrTagValue(name, connection=None, knobDirectory='/etc/knobs'):
     :param boto.ec2.connection connection: A boto connection to ec2
     :rtype: str
     '''
-    assert isinstance(name, basestring), ("name must be a string but is %r" % name)
+    assert isinstance(name, str), ("name must be a string but is %r" % name)
 
     data = None
     loadSharedLogger()
@@ -284,8 +277,8 @@ def loadVSphereSettings(knobName=DEFAULT_VSPHERE_KNOB, knobDirectory=DEFAULT_KNO
 
     :rtype dict:
     '''
-    assert isinstance(knobDirectory, basestring), ("knobDirectory must be a string but is %r" % knobDirectory)
-    assert isinstance(knobName, basestring), ("knobName must be a string but is %r" % knobName)
+    assert isinstance(knobDirectory, str), ("knobDirectory must be a string but is %r" % knobDirectory)
+    assert isinstance(knobName, str), ("knobName must be a string but is %r" % knobName)
 
     loadSharedLogger()
     fpath = "%s/%s" % (knobDirectory, knobName)
@@ -303,8 +296,8 @@ def loadVSphereSettings(knobName=DEFAULT_VSPHERE_KNOB, knobDirectory=DEFAULT_KNO
 
         except RuntimeError:
             this.logger.critical('Error loading %s - is the toml valid?', fpath)
-        else:
-            this.logger.info('No vSphere cache file at %s', fpath)
+    else:
+        this.logger.info('No vSphere cache file at %s', fpath)
 
     this.logger.warning('Failed to load vSphere settings from cache file, searching for hypervisor.')
     hypervisor = detectVSphereHost()
@@ -323,11 +316,11 @@ def writeVSphereSettings(knobName=DEFAULT_VSPHERE_KNOB, knobDirectory=DEFAULT_KN
     :param str user: username to connect to vSphere
     :param str password: password to connect to vSphere
     '''
-    assert isinstance(hostname, basestring), ("hostname must be a string but is %r" % hostname)
-    assert isinstance(knobDirectory, basestring), ("knobDirectory must be a string but is %r" % knobDirectory)
-    assert isinstance(knobName, basestring), ("knobName must be a string but is %r" % knobName)
-    assert isinstance(password, basestring), ("password must be a string but is %r" % password)
-    assert isinstance(username, basestring), ("username must be a string but is %r" % username)
+    assert isinstance(hostname, str), ("hostname must be a string but is %r" % hostname)
+    assert isinstance(knobDirectory, str), ("knobDirectory must be a string but is %r" % knobDirectory)
+    assert isinstance(knobName, str), ("knobName must be a string but is %r" % knobName)
+    assert isinstance(password, str), ("password must be a string but is %r" % password)
+    assert isinstance(username, str), ("username must be a string but is %r" % username)
 
     loadSharedLogger()
     knobPath = "%s/%s" % (knobDirectory, knobName)
@@ -380,7 +373,7 @@ def detectVSphereHost():
         password = v.get('password')
         this.logger.debug('Trying hostname:%s username:%s password:%s', hostname, username, password)
         try:
-            si = SmartConnect(host=hostname, user=username, pwd=password, sslContext=secure)
+            # si = SmartConnect(host=hostname, user=username, pwd=password, sslContext=secure)
             settings = {}
             settings['hostname'] = hostname
             settings['password'] = password
@@ -402,7 +395,7 @@ def connectVcenter():
     loadSharedLogger()
     secure = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
     secure.verify_mode = ssl.CERT_NONE
-    vSphereConnetionObjects = {}
+    vSphereConnectionObjects = {}
 
     this.logger.debug('secure.verify_mode=ssl.CERT_NONE')
 
@@ -423,14 +416,13 @@ def connectVcenter():
         searcher = si.content.searchIndex
         this.logger.debug('Searching for VM for UUID %s', uuid)
         vm = searcher.FindByUuid(uuid=uuid, vmSearch=True)
-        vSphereConnetionObjects['uuid'] = uuid
-        vSphereConnetionObjects['si'] = si
-        vSphereConnetionObjects['vm'] = vm
+        vSphereConnectionObjects['uuid'] = uuid
+        vSphereConnectionObjects['si'] = si
+        vSphereConnectionObjects['vm'] = vm
         print("Connection Objects {}".format(vSphereConnectionObjects))
         return vSphereConnectionObjects
     except socket.error:
         this.logger.info('Cannot connect to vSphere host %s to read VMWare tags', hostname)
-
 
 def readVirtualMachineTag(tagName):
     '''
@@ -469,12 +461,12 @@ def volumeTag():
     loadSharedLogger()
     volumes = readKnobOrTag(name='Volumes')
     vSphereConnetionObjects = connectVcenter()
-    uuid = vSphereConnetionObjects.get('uuid')
-    si = vSphereConnetionObjects.get('si')
+    # uuid = vSphereConnetionObjects.get('uuid')
+    # si = vSphereConnetionObjects.get('si')
     vm = vSphereConnetionObjects.get('vm')
     if volumes is not None:
         this.logger.debug('volumes = %s', volumes)
-    for k, v in dict(item.split("=") for item in volumes.split(",")).iteritems():
+    for k, v in dict(item.split("=") for item in volumes.split(",")).items():
         if not os.path.isdir(DEFAULT_VOLUMES_DIRECTORY):
             this.logger.warning("%s missing, creating...", DEFAULT_VOLUMES_DIRECTORY)
             systemCall("mkdir -p %s" % DEFAULT_VOLUMES_DIRECTORY)
@@ -486,11 +478,11 @@ def volumeTag():
             this.logger.debug("vm.config.hardware.device: %s", vm.config.hardware.device)
         for d in vm.config.hardware.device:
             this.logger.info('Checking device %s', d)
-        if type(d).__name__ == 'vim.vm.device.VirtualDisk' and re.match(pattern, d.backing.fileName):
-            this.logger.info("Found disk match %s", d.backing.fileName)
-            disk = d
-        else:
-            this.logger.info("Did not find disk")
+            if type(d).__name__ == 'vim.vm.device.VirtualDisk' and re.match(pattern, d.backing.fileName):
+                this.logger.info("Found disk match %s", d.backing.fileName)
+                disk = d
+            else:
+                this.logger.info("Did not find disk")
             if disk:
                 this.logger.info('Disk name: %s', disk.backing.fileName)
                 for c in vm.config.hardware.device:
@@ -551,8 +543,8 @@ def readSetting(setting, fallback=None, tomlFile=DEFAULT_TOML_FILE, knobDirector
 
     :rtype: str or int
     '''
-    assert isinstance(setting, basestring), ("setting must be a string but is %r" % setting)
-    assert isinstance(tomlFile, basestring), ("tomlFile must be a string but is %r" % tomlFile)
+    assert isinstance(setting, str), ("setting must be a string but is %r" % setting)
+    assert isinstance(tomlFile, str), ("tomlFile must be a string but is %r" % tomlFile)
 
     loadSharedLogger()
     v = readKnobOrTag(setting, knobDirectory=knobDirectory)
@@ -655,10 +647,7 @@ def inVMware():
     '''
     try:
         hypervisor = subprocess.check_output("ohai | jq '.hostnamectl.virtualization' | grep -c vmware", shell=True).strip()
-        if hypervisor == '1':
-            return True
-        else:
-            return False
+        return bool(hypervisor == '1')
     except subprocess.CalledProcessError:
         # grep exits 1 when it can't find the search string
         return False
@@ -714,7 +703,7 @@ def loadClientEnvironmentVariables(envFile='/etc/sourdough/environment-variables
 
     rtype: dict
     '''
-    assert isinstance(envFile, basestring), ("envFile must be a string but is %r" % envFile)
+    assert isinstance(envFile, str), ("envFile must be a string but is %r" % envFile)
 
     loadSharedLogger()
     try:
@@ -803,10 +792,10 @@ def generateClientConfiguration(nodeName=None,
 
     :rtype: str
     '''
-    assert isinstance(chefOrganization, basestring), ("chefOrganization must be a string but is %r" % chefOrganization)
-    assert isinstance(chefServerUrl, basestring), ("chefServerUrl must be a string but is %r" % chefServerUrl)
-    assert isinstance(nodeName, basestring), ("nodeName must be a string but is %r" % nodeName)
-    assert isinstance(validationClientName, basestring), ("validationClientName must be a string but is %r" % validationClientName)
+    assert isinstance(chefOrganization, str), ("chefOrganization must be a string but is %r" % chefOrganization)
+    assert isinstance(chefServerUrl, str), ("chefServerUrl must be a string but is %r" % chefServerUrl)
+    assert isinstance(nodeName, str), ("nodeName must be a string but is %r" % nodeName)
+    assert isinstance(validationClientName, str), ("validationClientName must be a string but is %r" % validationClientName)
 
     loadSharedLogger()
     # We want to share our logger object across the module
@@ -881,12 +870,12 @@ def infect(connection=None):
         if not connection:
             connection = getEC2connection()
             region = haze.ec2.myRegion()
-    else:
-        region = readKnobOrTag('region')
-        logger.debug('region: %s', region)
+        else:
+            region = readKnobOrTag('region')
+            logger.debug('region: %s', region)
 
-        # Determine parameters for initial Chef run
-        runlist = getRunlist()
+    # Determine parameters for initial Chef run
+    runlist = getRunlist()
 
     try:
         environment = getEnvironment()
@@ -1076,7 +1065,7 @@ def enableDebugMode():
     '''
     Remove the toggle file that enables Debug mode
     '''
-    ENABLE_SOURDOUGH_DEBUGGING_F = "/etc/sourdough/debug-sourdough"
+    # ENABLE_SOURDOUGH_DEBUGGING_F = "/etc/sourdough/debug-sourdough"
 
     if not amRoot():
         raise RuntimeError('This must be run as root')
