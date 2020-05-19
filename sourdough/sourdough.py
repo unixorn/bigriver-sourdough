@@ -171,12 +171,11 @@ def getAWSAccountID():
     '''
     link = "http://169.254.169.254/latest/dynamic/instance-identity/document"
     try:
-        conn = urllib.request(url=link, timeout=5)
+        conn = urllib.request.urlopen(url=link, timeout=5)
     except:
         return '0'
     jsonData = json.loads(conn.read())
     return jsonData['accountId']
-
 
 def readKnobOrTag(name, connection=None, knobDirectory='/etc/knobs'):
     '''
@@ -978,20 +977,21 @@ def runner(connection=None):
         # Assume AWS credentials are in the environment or the instance is using an IAM role
         if not connection:
             connection = getEC2connection()
-            region = haze.ec2.myRegion()
-        else:
-            region = readKnobOrTag('region')
 
-        if not region:
-            region = DEFAULT_REGION
-            logger.debug('region: %s', region)
+        region = haze.ec2.myRegion()
+    else:
+        region = readKnobOrTag('region')
 
-            runlist = getRunlist()
+    if not region:
+        region = DEFAULT_REGION
+        logger.debug('region: %s', region)
 
-        try:
-            environment = getEnvironment()
-        except RuntimeError:
-            environment = None
+    runlist = getRunlist()
+
+    try:
+        environment = getEnvironment()
+    except RuntimeError:
+        environment = None
 
     if inVMware():
         volumeTag()
