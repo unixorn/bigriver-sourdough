@@ -248,7 +248,6 @@ def readKnobOrTagValue(name, connection=None, knobDirectory='/etc/knobs'):
     this.logger.debug('tag %s = %s', name, data)
     return data
 
-
 def getIP():
     '''
     Determine our IP
@@ -265,7 +264,6 @@ def getIP():
     finally:
         s.close()
     return IP
-
 
 def loadVSphereSettings(knobName=DEFAULT_VSPHERE_KNOB, knobDirectory=DEFAULT_KNOB_DIRECTORY):
     '''
@@ -303,7 +301,6 @@ def loadVSphereSettings(knobName=DEFAULT_VSPHERE_KNOB, knobDirectory=DEFAULT_KNO
     hypervisor = detectVSphereHost()
     this.logger.debug('hypervisor: %r', hypervisor)
     return hypervisor
-
 
 def writeVSphereSettings(knobName=DEFAULT_VSPHERE_KNOB, knobDirectory=DEFAULT_KNOB_DIRECTORY, hostname=None, username=None, password=None):
     '''
@@ -441,16 +438,16 @@ def readVirtualMachineTag(tagName):
             this.logger.warning('Found %s, skipping vSphere reads', DISABLE_VSPHERE)
             return None
 
-    vSphereConnetionObjects = connectVcenter()
-    uuid = vSphereConnetionObjects.get('uuid')
-    si = vSphereConnetionObjects.get('si')
-    vm = vSphereConnetionObjects.get('vm')
-    if vm:
-        this.logger.debug('Found VM object for UUID %s, loading tags', uuid)
-        f = si.content.customFieldsManager.field
-        for k, v in [(x.name, v.value) for x in f for v in vm.customValue if x.key == v.key]:
-            vmwareTags[k] = v
-            this.logger.debug('Caching tag:%s=%s', k, v)
+        vSphereConnetionObjects = connectVcenter()
+        uuid = vSphereConnetionObjects.get('uuid')
+        si = vSphereConnetionObjects.get('si')
+        vm = vSphereConnetionObjects.get('vm')
+        if vm:
+            this.logger.debug('Found VM object for UUID %s, loading tags', uuid)
+            f = si.content.customFieldsManager.field
+            for k, v in [(x.name, v.value) for x in f for v in vm.customValue if x.key == v.key]:
+                vmwareTags[k] = v
+                this.logger.debug('Caching tag:%s=%s', k, v)
 
 def volumeTag():
     '''
@@ -720,8 +717,7 @@ def loadClientEnvironmentVariables(envFile='/etc/sourdough/environment-variables
     except Exception as err:
         this.logger.warn("Could not load env vars from %s", envFile)
         this.logger.warn("Error: {0}".format(err))
-    return {}
-
+        return {}
 
 def isCheffed():
     '''
@@ -735,12 +731,12 @@ def isCheffed():
     chefFiles = ["%s/client.rb" % CHEF_D, "%s/client.pem" % CHEF_D]
     for aChefFile in chefFiles:
         logger.debug("  Checking for %s", aChefFile)
-    if not os.path.isfile(aChefFile):
-        logger.debug("  %s missing, Chef not installed", aChefFile)
-        return False
+        if not os.path.isfile(aChefFile):
+            logger.debug("  %s missing, Chef not installed", aChefFile)
+            return False
+
     logger.critical('Chef client files found')
     return True
-
 
 def isDisabled():
     '''
@@ -870,10 +866,11 @@ def infect(connection=None):
         # Assume AWS credentials are in the environment or the instance is using an IAM role
         if not connection:
             connection = getEC2connection()
-            region = haze.ec2.myRegion()
-        else:
-            region = readKnobOrTag('region')
-            logger.debug('region: %s', region)
+
+        region = haze.ec2.myRegion()
+    else:
+        region = readKnobOrTag('region')
+    logger.debug('region: %s', region)
 
     # Determine parameters for initial Chef run
     runlist = getRunlist()
@@ -889,12 +886,12 @@ def infect(connection=None):
     with open('/etc/sourdough/sourdough.toml', 'r') as yeastFile:
         yeast = toml.load(yeastFile)['chef-registration']
 
-        # Sanity checks
-        if not region:
-            region = DEFAULT_REGION
-            logger.warning('Could not determine a region, using %s', region)
+    # Sanity checks
+    if not region:
+        region = DEFAULT_REGION
+        logger.warning('Could not determine a region, using %s', region)
 
-            nodeName = generateNodeName()
+    nodeName = generateNodeName()
 
     # If there is no Chef Server URL specified in sourdough.toml, default to Hosted Chef
     if 'chef_server_url' in yeast.keys():
@@ -902,14 +899,16 @@ def infect(connection=None):
     else:
         logger.warning('No chef_server_url in sourdough.toml, assuming you want Hosted Chef')
         chefServerUrl = 'https://api.chef.io/organizations'
-        logger.info('Setting Chef Server url to %s', chefServerUrl)
+
+    logger.info('Setting Chef Server url to %s', chefServerUrl)
 
     # If there is no Chef log location specified in sourdough.toml, default to STDOUT
     if 'chef_log_location' in yeast.keys():
         chefLogLocation = yeast['chef_log_location']
     else:
         chefLogLocation = 'STDOUT'
-        logger.info('Setting Chef Server url to %s', chefServerUrl)
+
+    logger.info('Setting Chef Server url to %s', chefServerUrl)
 
     # Configure Chef
     clientConfiguration = generateClientConfiguration(nodeName=nodeName,
