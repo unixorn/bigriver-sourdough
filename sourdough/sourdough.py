@@ -171,7 +171,7 @@ def getAWSAccountID():
     '''
     link = "http://169.254.169.254/latest/dynamic/instance-identity/document"
     try:
-        conn = urllib2.urlopen(url=link, timeout=5)
+        conn = urllib.request(url=link, timeout=5)
     except:
         return '0'
     jsonData = json.loads(conn.read())
@@ -189,7 +189,7 @@ def readKnobOrTag(name, connection=None, knobDirectory='/etc/knobs'):
     if name not in knobsCache:
         knobValue = readKnobOrTagValue(name, connection, knobDirectory)
         knobsCache[name] = knobValue
-        return knobsCache[name]
+    return knobsCache[name]
 
 def readKnobOrTagValue(name, connection=None, knobDirectory='/etc/knobs'):
     '''
@@ -245,7 +245,7 @@ def readKnobOrTagValue(name, connection=None, knobDirectory='/etc/knobs'):
         this.logger.info('Cannot load tag data for %s, attempting load from knob file cache', name)
         data = readKnob(knobName=name, knobDirectory=knobDirectory)
 
-        this.logger.debug('tag %s = %s', name, data)
+    this.logger.debug('tag %s = %s', name, data)
     return data
 
 
@@ -361,13 +361,13 @@ def detectVSphereHost():
     try:
         with open(DEFAULT_VMWARE_CONFIG, 'r') as vmwareConfig:
             vcenters = toml.load(vmwareConfig)['vcenters']
-    except IOError as error:
+    except IOError:
         this.logger.error('Could not open %s', DEFAULT_VMWARE_CONFIG)
         return None
 
     this.logger.debug('vcenters: %r', vcenters)
 
-    for k, v in vcenters.iteritems():
+    for k, v in vcenters.items():
         hostname = v.get('hostname')
         username = v.get('user')
         password = v.get('password')
@@ -496,8 +496,8 @@ def volumeTag():
                             f.write(file_content)
             else:
                 this.logger.warning('disk not found!')
-    else:
-        this.logger.warning('No Volume tag information found, skipping')
+        else:
+            this.logger.warning('No Volume tag information found, skipping')
 
 
 def loadHostname():
@@ -511,7 +511,8 @@ def loadHostname():
     if not hostname:
         this.logger.debug('No hostname tag or knob, falling back to hostname command output')
         hostname = systemCall('hostname').strip()
-        this.logger.debug('hostname: %s', hostname)
+
+    this.logger.debug('hostname: %s', hostname)
     return hostname
 
 
@@ -527,6 +528,9 @@ def getUUID():
     return uuid
 
 def loadSharedLogger():
+    """
+    Load shared logger
+    """
     try:
         logger = this.logger
     except AttributeError:
@@ -552,13 +556,14 @@ def readSetting(setting, fallback=None, tomlFile=DEFAULT_TOML_FILE, knobDirector
         # Did they stick it in the toml settings file?
         with open(tomlFile, 'r') as yeastFile:
             yeast = toml.load(yeastFile)['chef-registration']
-            if setting in yeast.keys():
-                v = yeast[setting]
-                this.logger.warning('Cannot read tag or knob file for %s, using %s from sourdough yeast file', setting, v)
-            else:
-                v = fallback
-                this.logger.warning('Cannot read tag or knob file for %s, using fallback value of %s', setting, v)
-                this.logger.debug('%s: %s', setting, v)
+        if setting in yeast.keys():
+            v = yeast[setting]
+            this.logger.warning('Cannot read tag or knob file for %s, using %s from sourdough yeast file', setting, v)
+        else:
+            v = fallback
+            this.logger.warning('Cannot read tag or knob file for %s, using fallback value of %s', setting, v)
+
+    this.logger.debug('%s: %s', setting, v)
     return v
 
 
@@ -631,11 +636,7 @@ def inEC2():
 
     :rtype: bool
     '''
-    if getAWSAccountID() == '0':
-        return False
-    else:
-        return True
-
+    return bool(getAWSAccountID() == '0')
 
 def inVMware():
     '''
@@ -1065,7 +1066,7 @@ def enableDebugMode():
     '''
     Remove the toggle file that enables Debug mode
     '''
-    # ENABLE_SOURDOUGH_DEBUGGING_F = "/etc/sourdough/debug-sourdough"
+    ENABLE_SOURDOUGH_DEBUGGING_F = "/etc/sourdough/debug-sourdough"
 
     if not amRoot():
         raise RuntimeError('This must be run as root')
